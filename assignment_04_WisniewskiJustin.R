@@ -1,41 +1,80 @@
-# Assignment: ASSIGNMENT 4.2
+# Assignment: ASSIGNMENT 4
 # Name: Wisniewski, Justin
-# Date: 2022-04-09
+# Date: 2022-04-24
+
+## Load the ggplot2 package
+library(ggplot2)
+theme_set(theme_minimal())
 
 ## Set the working directory to the root of your DSC 520 directory
 setwd("C:/Users/jwiz3/Desktop/Data Statistics/dsc520")
 
-## Load the `scores.csv`
-scores_df <- read.csv("data/scores.csv")
-str(scores_df)
-summary(scores_df)
-head(scores_df)
+## Load the `data/r4ds/heights.csv` to
+heights_df <- read.csv("data/r4ds/heights.csv")
 
-## The observational units in this study is the student performance in the course
+# https://ggplot2.tidyverse.org/reference/geom_boxplot.html
+## Create boxplots of sex vs. earn and race vs. earn using `geom_point()` and `geom_boxplot()`
+## sex vs. earn
+ggplot(heights_df, aes(x=sex, y=earn)) + geom_point()+ geom_boxplot()
+## race vs. earn
+ggplot(heights_df, aes(x=race, y=earn)) + geom_point()+ geom_boxplot()
 
-## The categorical variable is the section
-## The quantitative variables are the total points earned in the course and count
+# https://ggplot2.tidyverse.org/reference/geom_bar.html
+## Using `geom_bar()` plot a bar chart of the number of records for each `sex`
+ggplot(heights_df, aes(x=sex)) + geom_bar()
 
-## Create one variable to hold a subset of your data set that contains only the Regular Section and one variable for the Sports Section
-S=subset(scores_df,Section=="Sports")
-head(S)
-R=subset(scores_df,Section=="Regular")
-head(R)
+## Using `geom_bar()` plot a bar chart of the number of records for each race
+ggplot(heights_df, aes(x=race)) + geom_bar()
 
-Score1=S[,2]
-Score2=R[,2]
-par(mfrow=c(2,1))
-plot(Score1, xlab="number of students", ylab="Score", main="Sports")
-plot(Score2, xlab="number of students", ylab="Score", main="Regular")
+## Create a horizontal bar chart by adding `coord_flip()` to the previous plot
+ggplot(heights_df, aes(x=race)) + geom_bar() + coord_flip()
 
-## The scale of the scores for Regular section start greater than the Sports section
-## Although Sports had highest score, it appears Regular had a higher average
-## Summary for Sports and Regular
-summary(S)
-summary(R)
+# https://www.rdocumentation.org/packages/ggplot2/versions/3.3.0/topics/geom_path
+## Load the file `"data/nytimes/covid-19-data/us-states.csv"` and
+## assign it to the `covid_df` dataframe
+covid_df <- read.csv("data/nytimes/covid-19-data/us-states.csv")
 
-## No, when looking at the mean of both sections, regular scored higher on average, but sports had the highest score.
+## Parse the date column using `as.Date()``
+covid_df$date <- as.Date(covid_df$date)
 
-## The course of study, grade level, tutor yes/no
+## Create three dataframes named `california_df`, `ny_df`, and `florida_df`
+## containing the data from California, New York, and Florida
+california_df <- covid_df[ which( covid_df$state == "California"), ]
+ny_df <- covid_df[ which( covid_df$state == "New York"), ]
+florida_df <- covid_df[ which( covid_df$state == "Florida"), ]
 
+## Plot the number of cases in Florida using `geom_line()`
+ggplot(data=florida_df, aes(x=date, y=cases, group=1)) + geom_line()
 
+## Add lines for New York and California to the plot
+ggplot(data=florida_df, aes(x=date, group=1)) +
+  geom_line(aes(y = cases)) +
+  geom_line(data=ny_df, aes(y = cases)) +
+  geom_line(data=california_df, aes(y = cases))
+
+## Use the colors "darkred", "darkgreen", and "steelblue" for Florida, New York, and California
+ggplot(data=florida_df, aes(x=date, group=1)) +
+  geom_line(aes(y = cases), color = "darkred") +
+  geom_line(data=ny_df, aes(y = cases), color = "darkgreen") +
+  geom_line(data=california_df, aes(y = cases), color = "steelblue")
+
+## Add a legend to the plot using `scale_colour_manual`
+## Add a blank (" ") label to the x-axis and the label "Cases" to the y axis
+ggplot(data=florida_df, aes(x=date, group=1)) +
+  geom_line(aes(y = cases, colour = "Florida")) +
+  geom_line(data=ny_df, aes(y = cases,colour="New York")) +
+  geom_line(data=california_df, aes(y = cases, colour="California")) +
+  scale_colour_manual("",
+                      breaks = c("Florida", "New York", "California"),
+                      values = c("darkred", "darkgreen", "steelblue")) +
+  xlab(" ") + ylab("Cases")
+
+## Scale the y axis using `scale_y_log10()`
+ggplot(data=florida_df, aes(x=date, group=1)) +
+  geom_line(aes(y = cases, colour = "Florida")) +
+  geom_line(data=ny_df, aes(y = cases,colour="New York")) +
+  geom_line(data=california_df, aes(y = cases, colour="California")) +
+  scale_colour_manual("",
+                      breaks = c("Florida", "New York", "California"),
+                      values = c("darkred", "darkgreen", "steelblue")) +
+  xlab(" ") + ylab("Cases") + scale_y_log10()
