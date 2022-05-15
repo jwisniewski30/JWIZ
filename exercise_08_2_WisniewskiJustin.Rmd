@@ -1,0 +1,206 @@
+---
+title: 'Exercise 8.2: Housing Data'
+author: "Justin Wisniewski"
+date: '2022-05-15'
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+## i:
+
+**Explain any transformations or modifications you made to the dataset.**
+
+-   Transformations and Modifications:
+    -   Added total bathroom column
+    -   Removed rows whose sale price is \> 2 million and square foot lot \> 20000 as they are outliers and would skew the data
+    -   Removed properties with sale warning and no bedrooms as those are empty lots
+    -   Removed columns Sale_date, sale_reason, sale_instrument, sale_warning, site_type as they are not relevant
+    -   Removed columns Address, ctyname, postalcty, lon, lat, current_zoning, prop_type and present_use
+
+```{r echo=TRUE, include=TRUE}
+setwd("C:/Users/jwiz3/Desktop/Data Statistics/dsc520")
+library(readxl)
+## Load the `data/week-7-housing.xlsx` to
+realestate_df <- read_excel("data/week-7-housing.xlsx")
+## Add a calculated column total_bath which provides no of bathroom in total
+realestate_df <- within(realestate_df, total_bath <- bath_full_count + (bath_half_count/2) + (bath_3qtr_count/3))
+## Select relevant data points, sale price < 2000000 and square foot lot < 20000
+realestate_df = realestate_df[realestate_df$'Sale Price' < 2000000 & realestate_df$sq_ft_lot < 20000, ]
+realestate_df <- realestate_df[(is.na(realestate_df$sale_warning)) & (realestate_df$bedrooms != 0), ]
+## Selecting only relevant columns
+realestate_df <- realestate_df[, c(2,8,13, 14,15,19,20, 22, 25)]
+summary(realestate_df)
+plot(realestate_df$'Sale Price',realestate_df$sq_ft_lot)
+```
+
+## ii:
+
+**Create two variables; one that will contain the variables Sale Price and Square Foot of Lot (same variables used from previous assignment on simple regression) and one that will contain Sale Price and several additional predictors of your choice. Explain the basis for your additional predictor selections.**
+
+-   Additional predictor selections
+    -   The variables building_grade, square_feet_total_living, bedrooms, year_built, and total_bath have a significant impact on the sale price of the property
+    -   Total bathrooms = bath_full_count + (bath_half_count/2) + (bath_3qtr_count/3) to make it a lump sum
+
+```{r echo=TRUE, include=TRUE}
+cor(realestate_df)
+## Fit a linear model using the `Square foot of Lot` variable as the predictor and `Sale Price` as the outcome
+salepricebysqft_lm <-  lm(realestate_df$'Sale Price'~realestate_df$sq_ft_lot,data = realestate_df)
+## Fit a linear model using several predictors variable and `Sale Price` as the outcome
+salepricebymultiplevar_lm <-  lm(realestate_df$'Sale Price'~realestate_df$square_feet_total_living+realestate_df$year_built+realestate_df$bedrooms+realestate_df$total_bath+realestate_df$building_grade
+                                 ,data = realestate_df)
+```
+
+## iii:
+
+**Execute a summary() function on two variables defined in the previous step to compare the model results. What are the R2 and Adjusted R2 statistics? Explain what these results tell you about the overall model. Did the inclusion of the additional predictors help explain any large variations found in Sale Price?**
+
+```{r echo=TRUE, include=TRUE}
+## View the summary of your model using `summary()`
+summary(salepricebysqft_lm)
+## View the summary of your new model using `summary()`
+summary(salepricebymultiplevar_lm)
+```
+
+-   The R2 value at the bottom of each summary tells us whether the model is successful in predicting the outcome and if the difference between R2 and adjusted R2 values is small this would indicate that the sample taken is a good representation of the population.
+    -   First regression model, R2 is 0.0142 so this indicated that sq_ft_lot accounted for only 1.42% of the variation in sale price
+    -   Multiple regression model, R2 is 0.5874, so this multiple predictor model accounted for 58.74% of the variation in sale price.
+    -   The inclusion of the new predictors has explained a large amount of the variation in sale price, from 1.42% to 58.74%
+
+## iv:
+
+**Considering the parameters of the multiple regression model you have created. What are the standardized betas for each parameter and what do the values indicate?**
+
+```{r echo=TRUE, include=TRUE}
+library('QuantPsyc')
+##standardized betas for each parameter 
+lm.beta(salepricebymultiplevar_lm)
+```
+
+> Standardized beta estimates tell us the number of standard deviations by which the outcome will change as a result of one standard deviation change in the predictor. Looking at the outcome, we can figure out that square_feet_total_living and building_grade have more degree of importance in prediction than the others.
+
+## v:
+
+**Calculate the confidence intervals for the parameters in your model and explain what the results indicate.**
+
+```{r echo=TRUE, include=TRUE}
+confint(salepricebymultiplevar_lm)
+```
+
+-   square_feet_total_living 136.36 - 149.33, very tight confidence interval, indicates that the estimates for the current model are likely to be representative of the true population values
+-   building_grade 54953.31011 - 63423.9444, this is a good predictor, but has more gap
+-   bedrooms -20717.95186 - 12287.1934, this is a good predictor, but has more gap
+-   total_bath 2402.06681 - 15686.7220, this is a good predictor, but has more gap
+-   year_built -59.25909 - 353.4163, confidence intervals that cross zero, indicates that some samples the predictor has a negative relationship to the outcome whereas in others it has a positive relationship
+
+## vi:
+
+**Assess the improvement of the new model compared to your original model (simple regression model) by testing whether this change is significant by performing an analysis of variance.**
+
+```{r echo=TRUE, include=TRUE}
+anova(salepricebysqft_lm, salepricebymultiplevar_lm)
+```
+
+> The variance table analysis shows: F(4, 8575) = 2978.2 with p \< 0.001 hence the multiple regression model significantly improved the fit of the model to the data compared to salepricebysqft_lm.
+
+## vii:
+
+**Perform casewise diagnostics to identify outliers and/or influential cases, storing each function's output in a dataframe assigned to a unique variable name.**
+
+```{r echo=TRUE, include=TRUE}
+## Outliers
+realestate_df$residuals <- resid(salepricebymultiplevar_lm)
+realestate_df$studentized.residuals <- rstudent(salepricebymultiplevar_lm)
+realestate_df$standardized.residuals <- rstandard(salepricebymultiplevar_lm)
+## Influential Cases
+realestate_df$dffit <- dffits(salepricebymultiplevar_lm)
+realestate_df$leverage <- hatvalues(salepricebymultiplevar_lm)
+realestate_df$covariance.ratios <- covratio(salepricebymultiplevar_lm)
+realestate_df$cooks.distance <- cooks.distance(salepricebymultiplevar_lm)
+realestate_df$dfbeta <- dfbeta(salepricebymultiplevar_lm)
+summary(realestate_df)
+```
+
+## viii:
+
+**Calculate the standardized residuals using the appropriate command, specifying those that are +-2, storing the results of large residuals in a variable you create.**
+
+```{r echo=TRUE, include=TRUE}
+realestate_df$large.residual <- realestate_df$standardized.residuals > 2 | realestate_df$standardized.residuals < -2
+summary(realestate_df)
+```
+
+## ix:
+
+**Use the appropriate function to show the sum of large residuals.**
+
+```{r echo=TRUE, include=TRUE}
+sum(realestate_df$large.residual)
+```
+
+## x:
+
+**Which specific variables have large residuals (only cases that evaluate as TRUE)?**
+
+```{r echo=TRUE, include=TRUE}
+realestate_df[realestate_df$large.residual, c("Sale Price", "building_grade", "square_feet_total_living", "bedrooms", "total_bath", "year_built", "sq_ft_lot", "standardized.residuals")]
+```
+
+## xi:
+
+**Investigate further by calculating the leverage, cooks distance, and covariance rations. Comment on all cases that are problematic.**
+
+```{r echo=TRUE, include=TRUE}
+realestate_df[realestate_df$large.residual, c("cooks.distance", "leverage", "covariance.ratios")]
+```
+
+> Out of 284 total rows, no distance is greater than 1, meaning there is no problematic row.
+
+## xii:
+
+**Perform the necessary calculations to assess the assumption of independence and state if the condition is met or not.**
+
+install.packages("car")
+
+```{r echo=TRUE, include=TRUE}
+library("car")
+dwt(salepricebymultiplevar_lm)
+```
+
+> Using the Durbin--Watson test, we can obtain this statistic along with a measure of autocorrelation and a p-value in R. The statistic should be between 1 and 3 and should be closer to 2, in our case, it is 1.18. The p-value of 0 confirms this conclusion.
+
+## xiii:
+
+**Perform the necessary calculations to assess the assumption of no multicollinearity and state if the condition is met or not.**
+
+```{r echo=TRUE, include=TRUE}
+## vif
+vif(salepricebymultiplevar_lm)
+## 1/vif
+1/vif(salepricebymultiplevar_lm)
+## mean
+mean(vif(salepricebymultiplevar_lm))
+```
+
+> The VIF values are all well below 10 and the tolerance statistics all well above 0.2. Also, the average VIF is very close to 1. Based on these measures there is no collinearity within our data.
+
+## xiv:
+
+**Visually check the assumptions related to the residuals using the plot() and hist() functions. Summarize what each graph is informing you of and if any anomalies are present.**
+
+```{r echo=TRUE, include=TRUE}
+library(ggplot2)
+plot(salepricebymultiplevar_lm)
+hist(realestate_df$studentized.residuals)
+scatter <- ggplot(realestate_df, aes(fitted, studentized.residuals)) + geom_point() + geom_smooth(method = "lm", colour = "Blue")+ labs(x = "Fitted Values", y = "Studentized Residual")
+```
+
+-   The first graph shows the plot of fitted values against residuals. Graph is not funneling out, so there are no chances that there is heteroscedasticity in the data. There is no curve in the graph, so it is not violating any assumptions of linearity.
+-   The Normal Q-Q plot should show deviations from normality. In the plot above, it deviates from both the ends of the line, which indicates deviation of normality at the extreme values.
+
+## xv:
+
+**Overall, is this regression model unbiased? If an unbiased regression model, what does this tell us about the sample vs. the entire population model?**
+
+> Looking at all the ouputs and calculations performed on the data model after removing the outliers, we can safely conclude that the regression model is unbiased. The sample is a good representation of the entire population model.
