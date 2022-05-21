@@ -1,0 +1,36 @@
+---
+title: "10.2 Exercise Part 2"
+author: "Justin Wisniewski"
+date: '2022-05-21'
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Assignment Instructions:
+
+**Fit a logistic regression model to the binary-classifier-data.csv dataset**
+**What is the accuracy of the logistic regression classifier?**
+
+```
+The accuracy came out to be 58.34%
+```
+
+```{r echo=TRUE, include=TRUE} 
+setwd("C:/Users/jwiz3/Desktop/Data Statistics/dsc520")
+binary_df <- read.csv("data/binary-classifier-data.csv")
+binaryClassifier_df <- read.csv("data/binary-classifier-data.csv")
+#Logistic Regression Model
+binaryClassifier_glm <- glm(label ~ x + y, data=binaryClassifier_df, family = binomial)
+summary(binaryClassifier_glm)
+res_val <- predict(binaryClassifier_glm, type="response")
+bcPredictionData <- table(Actual_Value = binaryClassifier_df$label, Predicted_Value = res_val > 0.5)
+bcPredictionData
+dataModelAccuracy <- (bcPredictionData[[1,1]] + bcPredictionData[[2,2]]) / sum(bcPredictionData)
+dataModelAccuracy
+```
