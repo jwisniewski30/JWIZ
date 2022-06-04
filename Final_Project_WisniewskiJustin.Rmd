@@ -1,7 +1,7 @@
 ---
-title: '10.3: Final Project Step 1 & 2'
+title: '11.3: Final Project'
 author: "Justin Wisniewski"
-date: '2022-05-24'
+date: '2022-06-4'
 output:
   pdf_document: default
   word_document: default
@@ -53,6 +53,7 @@ output:
 -   purrr
 -   Quantpsyc
 -   ggmap
+-   lubridate
 
 ### Plots and Table Needs
 
@@ -85,18 +86,43 @@ Huntsville_df <- read_excel("FinalProject/Huntsville.xlsx")
 Moody_df <- read_excel("FinalProject/Moody.xlsx")
 ```
 
-> There are numerous columns within the datasets that will not be important in relation to the adjusted plan.  It would be most beneficial to start by selecting only relevant columns. Columns 6, 8, 19, 37, 38, 41, 44, 59, 62, 69, 81, 84, 92, 93, 95, 97.  I would also like to add a column that is a total of the down in yard and down on route times.  I believe we can get a better handle of relevant data points by using Total Actual Units.  I'm thinking looking at Total Actual Units above 3, as well as eliminating any actual hours of 0 or 14+.  This will be a formatting issue that I will need to dig into further for the final data set.
+> There are numerous columns within the datasets that will not be important in relation to the adjusted plan.  It would be most beneficial to start by selecting only relevant columns. Columns 6, 8, 19, 21, 91, 100, 101, 102, 103.  I was able to use is.na to eliminate NA values which was able to eliminate any bad data in the next step.
 
 ### What does the final data set look like?:
 ```{r echo=TRUE, include=TRUE}
-## Select relevant data points, Total Actual Units > 3
-Birmingham_df = Birmingham_df[Birmingham_df$'Total Actual Units'>3, ]
-Huntsville_df = Huntsville_df[Huntsville_df$'Total Actual Units'> 3, ]
-Moody_df = Moody_df[Moody_df$'Total Actual Units'> 3, ]
+## Change driver name column to site name
+Birmingham_df$Driver <- 'Birmingham'
+Huntsville_df$Driver <- 'Huntsville'
+Moody_df$Driver <- 'Moody'
+## Combine all three data frames
+Alabama_df <- do.call("rbind", list(Birmingham_df, Huntsville_df, Moody_df))
+## Extract time stamp from pre and post route actual
+Alabama_df$preroutetime_component <- format(Alabama_df$`Pre-Route Actual (h:m)`,'%H:%M:%S')
+Alabama_df$postroutetime_component <- format(Alabama_df$`Post-Route Actual (h:m)`,'%H:%M:%S')
+## Extract time stamp from net idle and non statused time
+Alabama_df$idle_component <- format(Alabama_df$`Net Idle`,'%H:%M:%S')
+Alabama_df$nonstatus_component <- format(Alabama_df$`Non Statused Time`,'%H:%M:%S')
 ## Selecting only relevant columns
-Birmingham_df <- Birmingham_df[, c(6,8,19,37,38,41,44,59,62,69,81,84,92,93,95,97)]
-Huntsville_df <- Huntsville_df[, c(6,8,19,37,38,41,44,59,62,69,81,84,92,93,95,97)]
-Moody_df <- Moody_df[, c(6,8,19,37,38,41,44,59,62,69,81,84,92,93,95,97)]
+Alabama_df <- Alabama_df[, c(6,8,19,21,91,100,101,102,103)]
+## Drop NA Values
+Alabama_df <- Alabama_df[!rowSums((is.na(Alabama_df))),]
+# Conversions to datetime object
+library(lubridate)
+library(ggplot2)
+Alabama_df$preroutetime_component <-  as.duration(hms(Alabama_df$preroutetime_component))
+Alabama_df$postroutetime_component <-  as.duration(hms(Alabama_df$postroutetime_component))
+Alabama_df$idle_component <-  as.duration(hms(Alabama_df$idle_component))
+Alabama_df$nonstatus_component <-  as.duration(hms(Alabama_df$nonstatus_component))
+## Convert character to factor
+Alabama_df$Driver <- as.factor(Alabama_df$Driver)
+Alabama_df$MIE <- as.factor(Alabama_df$MIE)
+## Convert character to integer
+Alabama_df$`Total Actual Units` <- as.integer(Alabama_df$`Total Actual Units`)
+## Select relevant data points
+Alabama_df = Alabama_df[Alabama_df$'preroutetime_component' > 1000 & Alabama_df$preroutetime_component < 1800, ]
+Alabama_df = Alabama_df[Alabama_df$'postroutetime_component' > 600 & Alabama_df$postroutetime_component < 1800, ]
+summary(Alabama_df)
+plot(Alabama_df$'Adj Plan Eff Var',Alabama_df$preroutetime_component)
 ```
 
 ### Questions for future steps
@@ -130,3 +156,62 @@ Moody_df <- Moody_df[, c(6,8,19,37,38,41,44,59,62,69,81,84,92,93,95,97)]
 ### Questions for future steps.
 
 > My plan is to start from where we did this semester.  Building from the basics, to plotting and visualizing the data.  I think there will be questions that come along the way with the best way to format and design the visualizations, but I believe this will become trial-and-error for what will portray the best.  The machine learning techniques is where I feel I will spend the majority of my time once visualizations and plotting is complete.  I will want to get as much data driven from what is already given, in order to have the most evidence behind the "why" of an adjusted plan miss.
+
+## Step 3
+
+### Introduction
+> At Waste Management, the adjusted plan metric is one of our main resources to identify opportunities on route. The adjusted plan is one of the first metrics a route manager will go to for coaching, so it is highly important that the data is correct prior to conversations with a driver. Too many times a data blow will not be corrected, and therefore give a false representation on how a site is performing. The company should be interested in ensuring the data is clean and accurate, as it not only will help drive performance improvement, but also trust between the drivers and management. Furthermore, to show how each time bucket is connected to one another will only help fine tune the adjusted plan in the future. We will be looking at data from three WM sites in the state of Alabama (Birmingham, Huntsville, and Moody). The primary focus was the adjusted plan eff variance, and which time buckets have the most correlation.  Total Actual Units that are hauled has the biggest impact on the efficiency variance.  This makes sense, as hauls and hours is how the efficiency number is created. It appears pre-trip has the greatest negative relationship with the adjusted plan.  Something to point out would be the strong relationship between idle occurrences and idle time, which also would go hand in hand with each other.
+
+### Problem
+> The main problem is identifying what time bucket / variable is the biggest opportunity for the  WM sites within the state of Alabama.  Furthermore, eliminating the outliers that are data discrepancies to ensure that the opportunity is indeed accurate.
+
+### Plan Of Attack
+> The first task was to import the three sites OPUS data, as well as re-format the columns that kept the (h:m) format preventing certain models from running.  Next is eliminating the 90 variables of data within each file that was not necessary for this problem.  Lastly, to then integrate all of the sites together to have an overall picture of the opportunity within Alabama.  The linear model as well as the correlation below were the first two steps taken to then see what our focus needs to be for 30-60-90 day plans.
+
+### Analysis
+```{r echo=TRUE, include=TRUE}
+library(dplyr)
+library(broom)
+library(ggpubr)
+library(corrr)
+cor(Alabama_df[sapply(Alabama_df,is.numeric)])
+## Fit a linear model using the `Nonstatus_component` variable as the predictor and `Adj Plan Eff Var` as the outcome
+nonstatus_component_lm <-  lm(Alabama_df$'Adj Plan Eff Var'~Alabama_df$nonstatus_component,data = Alabama_df)
+idle_component_lm <-  lm(Alabama_df$'Adj Plan Eff Var'~Alabama_df$idle_component,data = Alabama_df)
+## Fit a linear model using several predictor variables and `Adj Plan Eff Var` as the outcome
+AdjPlanMultVar_lm <-  lm(Alabama_df$'Adj Plan Eff Var'~Alabama_df$preroutetime_component+Alabama_df$postroutetime_component+Alabama_df$idle_component+Alabama_df$nonstatus_component+Alabama_df$MIE,data = Alabama_df)
+## View the summary of your model using `summary()`
+summary(nonstatus_component_lm)
+## View the summary of your new model using `summary()`
+summary(AdjPlanMultVar_lm)
+## Standardized Betas
+library('QuantPsyc')
+## Standardized betas for each parameter 
+lm.beta(nonstatus_component_lm)
+lm.beta(idle_component_lm)
+## Confidence Intervals
+confint(AdjPlanMultVar_lm)
+```
+### Plotting
+```{r echo=TRUE, include=TRUE}
+## Using `geom_point() scatterplot for pre route and adj plan
+ggplot(Alabama_df, aes(x=preroutetime_component, y='Adj Plan Eff Var')) + geom_point()
+## Histogram for pre route
+ggplot(Alabama_df, aes(preroutetime_component)) + geom_histogram()
+## Density plot for non status
+ggplot(Alabama_df, aes(nonstatus_component)) +  geom_density()
+```
+### Tests
+```{r echo=TRUE, include=TRUE}
+library("car")
+dwt(AdjPlanMultVar_lm)
+```
+### Implications
+> The R2 value at the bottom of each summary tells us whether the model is successful in predicting the outcome and if the difference between R2 and adjusted R2 values is small this would indicate that the sample taken is a good representation of the population. First regression model, R2 is 0.02261 so this indicated that nonstatus_component accounted for only 2.26% of the variation in adjusted plan. Multiple regression model, R2 is 0.09337, so this multiple predictor model accounted for 9.34% of the variation in adjusted plan. The inclusion of the new predictors made an impact, but as close as these values are it appears we have a good representation of the WM sites.
+
+### Limitations
+> From a data standpoint, I believeI had more than I would have even needed for this problem specifically.  The biggest concern will still always be bad data.  A 24+ hour pre or post trip should stick out, but does't always.  I think the biggest limitation is when using the adjusted plan variance, the number is so small that it was affecting the plots and charts trying to portray good info.  I think using the actual time the adjusted plan was beat/missed in the (h:m) format would help clean up the look of some of the visualizations.
+
+### Concluding Remarks
+> I hope this analysis helped paint a better picture of the opportunity in the state of Alabama for WM from an efficiency standpoint, and that to start is simply getting more hauls.  Furthermore, proper tablet usage and an increased focus on training for drivers would help from a data perspective.
+
