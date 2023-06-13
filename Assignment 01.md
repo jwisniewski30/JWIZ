@@ -19,6 +19,8 @@ author: Justin Wisniewski
 | 4k UHD Uncompressed Video (15 minutes)     | 45 GB         |
 | Human Genome (Uncompressed)                | 3 GB          |
 
+A few scanning tips. Understanding File Types, Bit Depth, Image Data Size. With calculators for image size and to Convert Bytes to KB, MB, GB, TB. (n.d.). https://www.scantips.com/basics1d.html 
+
 #### b. Scaling
 
 |                                           | Size     | # HD | 
@@ -40,6 +42,8 @@ author: Justin Wisniewski
 | Instagram Photos                   | 3609 |     175    |
 | YouTube Videos                     | 81130|    3934    |
 
+Hard Drive Data and Stats. Backblaze Hard Drive Stats. (n.d.). https://www.backblaze.com/b2/hard-drive-test-data.html 
+
 #### d. Latency
 
 |                           | One Way Latency      |
@@ -49,3 +53,5 @@ author: Justin Wisniewski
 | Geostationary Satellite   | 240-280 ms           |
 | Earth to the Moon         | 1.282 s              |
 | Earth to Mars             | 3 minutes            | 
+
+Ping time between Amsterdam and Los Angeles. WonderNetwork. (n.d.). https://wondernetwork.com/pings/Amsterdam/Los%20Angeles 
